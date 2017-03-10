@@ -1,117 +1,30 @@
-﻿# IMPORTANT: Before releasing this package, copy/paste the next 2 lines into PowerShell to remove all comments from this file:
-#   $f='c:\path\to\thisFile.ps1'
-#   gc $f | ? {$_ -notmatch "^\s*#"} | % {$_ -replace '(^.*?)\s*?[^``]#.*','$1'} | Out-File $f+".~" -en utf8; mv -fo $f+".~" $f
+﻿
+$ErrorActionPreference = 'Stop';
 
-$ErrorActionPreference = 'Stop'; # stop on all errors
-
-$packageName= 'fonts-ricty-diminished' # arbitrary name for the package, used in messages
+$packageName= 'fonts-ricty-diminished'
 $toolsDir   = "$(Split-Path -parent $MyInvocation.MyCommand.Definition)"
-$url        = 'http://www.rs.tus.ac.jp/yyusa/ricty_diminished/ricty_diminished-4.1.0.tar.gz' # download url, HTTPS preferred
-#$url64      = '' # 64bit URL here (HTTPS preferred) or remove - if installer contains both (very rare), use $url
-#$fileLocation = Join-Path $toolsDir 'NAME_OF_EMBEDDED_INSTALLER_FILE'
-#$fileLocation = '\\SHARE_LOCATION\to\INSTALLER_FILE'
+$url        = 'http://www.rs.tus.ac.jp/yyusa/ricty_diminished/ricty_diminished-4.1.0.tar.gz'
 $packageArgs = @{
   packageName   = $packageName
   unzipLocation = $toolsDir
-  fileType      = 'zip' #only one of these: exe, msi, msu
+  fileType      = '.tar.gz'
   url           = $url
-  #file         = $fileLocation
 
-  softwareName  = 'fonts-ricty-diminished*' #part or all of the Display Name as you see it in Programs and Features. It should be enough to be unique
+  softwareName  = 'fonts-ricty-diminished*'
 
-  # Checksums are now required as of 0.10.0.
-  # To determine checksums, you can get that from the original site if provided. 
-  # You can also use checksum.exe (choco install checksum) and use it 
-  # e.g. checksum -t sha256 -f path\to\file
   checksum      = '6DCE3E5D3E044E2EE77B3B181A62D541'
-  checksumType  = 'sha256' #default is md5, can also be sha1, sha256 or sha512
+  checksumType  = 'sha256'
 }
 
-Install-ChocolateyZipPackage @packageArgs # https://chocolatey.org/docs/helpers-install-chocolatey-zip-package
+# un gz
+Install-ChocolateyZipPackage @packageArgs
 
+# un tar
+$dist =  Join-Path $toolsDir "fonts"
+$tar = Join-Path $toolsDir ([System.IO.Path]::GetFileNameWithoutExtension($url))
+Get-ChocolateyUnzip -FileFullPath $tar -Destination $dist
 
-## If you are making your own internal packages (organizations), you can embed the installer or 
-## put on internal file share and use the following instead (you'll need to add $file to the above)
-#Install-ChocolateyInstallPackage @packageArgs # https://chocolatey.org/docs/helpers-install-chocolatey-install-package
+# Install fonts
+powershell -f """$(Split-Path -parent $MyInvocation.MyCommand.Definition)\Add-Font.ps1"""  $dist
 
-## Main helper functions - these have error handling tucked into them already
-## see https://chocolatey.org/docs/helpers-reference
-
-## Install an application, will assert administrative rights
-## - https://chocolatey.org/docs/helpers-install-chocolatey-package
-## - https://chocolatey.org/docs/helpers-install-chocolatey-install-package
-## add additional optional arguments as necessary
-##Install-ChocolateyPackage $packageName $fileType $silentArgs $url [$url64 -validExitCodes $validExitCodes -checksum $checksum -checksumType $checksumType -checksum64 $checksum64 -checksumType64 $checksumType64]
-
-## Download and unpack a zip file - https://chocolatey.org/docs/helpers-install-chocolatey-zip-package
-##Install-ChocolateyZipPackage $packageName $url $toolsDir [$url64 -checksum $checksum -checksumType $checksumType -checksum64 $checksum64 -checksumType64 $checksumType64]
-
-## Install Visual Studio Package - https://chocolatey.org/docs/helpers-install-chocolatey-vsix-package
-#Install-ChocolateyVsixPackage $packageName $url [$vsVersion] [-checksum $checksum -checksumType $checksumType]
-#Install-ChocolateyVsixPackage @packageArgs
-
-## see the full list at https://chocolatey.org/docs/helpers-reference
-
-## downloader that the main helpers use to download items
-## if removing $url64, please remove from here
-## - https://chocolatey.org/docs/helpers-get-chocolatey-web-file
-#Get-ChocolateyWebFile $packageName 'DOWNLOAD_TO_FILE_FULL_PATH' $url $url64
-
-## Installer, will assert administrative rights - used by Install-ChocolateyPackage
-## use this for embedding installers in the package when not going to community feed or when you have distribution rights
-## - https://chocolatey.org/docs/helpers-install-chocolatey-install-package
-#Install-ChocolateyInstallPackage $packageName $fileType $silentArgs '_FULLFILEPATH_' -validExitCodes $validExitCodes
-
-## Unzips a file to the specified location - auto overwrites existing content
-## - https://chocolatey.org/docs/helpers-get-chocolatey-unzip
-#Get-ChocolateyUnzip "FULL_LOCATION_TO_ZIP.zip" $toolsDir
-
-## Runs processes asserting UAC, will assert administrative rights - used by Install-ChocolateyInstallPackage
-## - https://chocolatey.org/docs/helpers-start-chocolatey-process-as-admin
-#Start-ChocolateyProcessAsAdmin 'STATEMENTS_TO_RUN' 'Optional_Application_If_Not_PowerShell' -validExitCodes $validExitCodes
-
-## add specific folders to the path - any executables found in the chocolatey package 
-## folder will already be on the path. This is used in addition to that or for cases 
-## when a native installer doesn't add things to the path.
-## - https://chocolatey.org/docs/helpers-install-chocolatey-path
-#Install-ChocolateyPath 'LOCATION_TO_ADD_TO_PATH' 'User_OR_Machine' # Machine will assert administrative rights
-
-## Add specific files as shortcuts to the desktop
-## - https://chocolatey.org/docs/helpers-install-chocolatey-shortcut
-#$target = Join-Path $toolsDir "$($packageName).exe"
-# Install-ChocolateyShortcut -shortcutFilePath "<path>" -targetPath "<path>" [-workDirectory "C:\" -arguments "C:\test.txt" -iconLocation "C:\test.ico" -description "This is the description"]
-
-## Outputs the bitness of the OS (either "32" or "64")
-## - https://chocolatey.org/docs/helpers-get-o-s-architecture-width
-#$osBitness = Get-ProcessorBits
-
-## Set persistent Environment variables
-## - https://chocolatey.org/docs/helpers-install-chocolatey-environment-variable
-#Install-ChocolateyEnvironmentVariable -variableName "SOMEVAR" -variableValue "value" [-variableType = 'Machine' #Defaults to 'User']
-
-## Set up a file association
-## - https://chocolatey.org/docs/helpers-install-chocolatey-file-association
-#Install-ChocolateyFileAssociation 
-
-## Adding a shim when not automatically found - Cocolatey automatically shims exe files found in package directory.
-## - https://chocolatey.org/docs/helpers-install-bin-file
-## - https://chocolatey.org/docs/create-packages#how-do-i-exclude-executables-from-getting-shims
-#Install-BinFile
-
-##PORTABLE EXAMPLE
-#$toolsDir = "$(Split-Path -parent $MyInvocation.MyCommand.Definition)"
-# despite the name "Install-ChocolateyZipPackage" this also works with 7z archives
-#Install-ChocolateyZipPackage $packageName $url $toolsDir $url64
-## END PORTABLE EXAMPLE
-
-## [DEPRECATING] PORTABLE EXAMPLE
-#$binRoot = Get-BinRoot
-#$installDir = Join-Path $binRoot "$packageName"
-#Write-Host "Adding `'$installDir`' to the path and the current shell path"
-#Install-ChocolateyPath "$installDir"
-#$env:Path = "$($env:Path);$installDir"
-
-# if removing $url64, please remove from here
-# despite the name "Install-ChocolateyZipPackage" this also works with 7z archives
-#Install-ChocolateyZipPackage "$packageName" "$url" "$installDir" "$url64"
-## END PORTABLE EXAMPLE
+Write-ChocolateySuccess "$packageName"
